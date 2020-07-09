@@ -59,7 +59,7 @@ for e = 21%:48
 end
 %% TESTING Cleanup
 %files for well 1 :   files = dir(strcat('croppedImage',1,'-*.*'));
-IM = uint8(255 * mat2gray(imcomplement((Neg-(imread("data/well21/croppedImage21-526.png"))))));
+IM = uint8(255 * mat2gray(imcomplement((Neg-(imread("data/well20/croppedImage20-526.png"))))));
 BinIM = IM <160;
 %BinIM = bwmorph(BinIM, 'open');
 eroimg = imerode(BinIM, strel('disk', 1));
@@ -68,19 +68,22 @@ BinIM = imdilate(eroimg, strel('disk', 1));
 BinIM = bwmorph(BinIM,'hbreak', Inf);
 BinIM = bwareafilt(BinIM,1);
 BinIM = bwskel(BinIM);
+imshow(BinIM)
 
-%% Find branchpoints (hopefully only ever 1) and remove
+%% Find branchpoints (hopefully only ever 1 or none) and remove
 branchPoints = bwmorph(BinIM, 'branchpoints');
-branchSub = BinIM - bwmorph(branchPoints, 'thicken');
-imshow(branchSub);
-hold on
+if branchPoints ~= logical(zeros(551,551))
+    branchSub = BinIM - bwmorph(branchPoints, 'thicken');
+    imshow(branchSub);
+    hold on
 
-[r, c] = find(branchPoints.' == 1);
-position = [r, c];
-plot(position(:,1), position(:,2), 'ro')
+    [r, c] = find(branchPoints.' == 1);
+    position = [r, c];
+    plot(position(:,1), position(:,2), 'ro')
 
-disp(position(:,1))
-hold off
+    disp(position(:,1))
+    hold off
+end
 %% Find 3 nearest neighbours to branch point:
     imshow(branchSub);
     hold on
@@ -100,9 +103,9 @@ for i=1:n
   [val(i),idx(i)] = min(distances);
   distances(idx(i)) = NaN;
 end
-plot(nonzero(idx(1),1), nonzero(idx(1),2), 'yo')
-plot(nonzero(idx(2),1), nonzero(idx(2),2), 'go')
-plot(nonzero(idx(3),1), nonzero(idx(3),2), 'bo')
+plot(nonzero(idx(1),1), nonzero(idx(1),2), 'yo');
+plot(nonzero(idx(2),1), nonzero(idx(2),2), 'go');
+plot(nonzero(idx(3),1), nonzero(idx(3),2), 'bo');
 
 %% Determine which point is on the main branch
     %Find line with largest area, determine which point (of three) is on
@@ -115,55 +118,98 @@ plot(nonzero(idx(1),1), nonzero(idx(1),2), 'bo');
 disp(nonzero(idx(1),1));
 disp(nonzero(idx(1),2));
 %% Define the Points
-if mainline(nonzero(idx(1),1), nonzero(idx(1),2)) == 1
+imshow(mainline)
+hold on
+plot(nonzero(idx(1),1), nonzero(idx(1),2), "ro")
+plot(mainline(nonzero(idx(1),1), nonzero(idx(1),2)), "bo")
+plot(mainline(nonzero(idx(1),1), nonzero(idx(1),2)), "bo")
+disp(nonzero(idx(1),2))
+if mainline(nonzero(idx(1),2), nonzero(idx(1),1)) == 1
     %then point one on mainline
-    mainlinept = [nonzero(idx(1),1), nonzero(idx(1),2)];
-    branchpt1 = [nonzero(idx(2),1), nonzero(idx(2),2)];
-    branchpt2 = [nonzero(idx(3),1), nonzero(idx(3),2)];
+    mainlinept = [nonzero(idx(1),2), nonzero(idx(1),1)];
+    branchpt1 = [nonzero(idx(2),2), nonzero(idx(2),1)];
+    branchpt2 = [nonzero(idx(3),2), nonzero(idx(3),1)];
    
 elseif mainline(nonzero(idx(2),1), nonzero(idx(2),2)) ==1
     %then second point on mainline
-    mainlinept = [nonzero(idx(2),1), nonzero(idx(2),2)];
-    branchpt1 = [nonzero(idx(1),1), nonzero(idx(1),2)];
-    branchpt2 = [nonzero(idx(3),1), nonzero(idx(3),2)];
+    mainlinept = [nonzero(idx(2),2), nonzero(idx(2),1)];
+    branchpt1 = [nonzero(idx(1),2), nonzero(idx(1),1)];
+    branchpt2 = [nonzero(idx(3),2), nonzero(idx(3),1)];
 else
     %then third point on mainline
-    mainlinept = [nonzero(idx(3),1), nonzero(idx(3),2)];
-    branchpt1 = [nonzero(idx(2),1), nonzero(idx(2),2)];
-    branchpt2 = [nonzero(idx(1),1), nonzero(idx(1),2)];
+    mainlinept = [nonzero(idx(3),2), nonzero(idx(3),1)];
+    branchpt1 = [nonzero(idx(2),2), nonzero(idx(2),1)];
+    branchpt2 = [nonzero(idx(1),2), nonzero(idx(1),1)];
 end
-    
+
+imshow(branchSub)
+hold on
+plot(mainlinept(1,2), mainlinept(1,1), 'yo')
+plot(branchpt1(1,2), branchpt1(1,1), 'go')
+plot(branchpt2(1,2), branchpt2(1,1), 'bo')
 %% Find angle between main branch point, branchpoint, and either branch
-a = mainlinept;
-b = [branchpt1; branchpt2];
-c = [position(:,1), position(:,2)]; %original branch point
+x0 = position(1,1);
+y0 = position(1,2);
+x1 = mainlinept(1,2);
+y1 = mainlinept(1,1);
+x2 = branchpt1(1,2);
+y2 = branchpt1(1,1);
+x3 = branchpt2(1,2);
+y3 = branchpt2(1,1);
 
-%compute the Euclidean norm of the vectors :
-ab1=sqrt((b(1,2)-a(1,2))^2+(b(1,1)-a(1,1))^2);
-ab2=sqrt((b(2,2)-a(1,2))^2+(b(2,1)-a(1,1))^2);
-ac=sqrt((c(1,2)-a(1,2))^2+(c(1,1)-a(1,1))^2);
+angle2 = acos((((x0 - x1)^2 + (y0 - y1)^2) + ((x0 - x2)^2 + (y0 - y2)^2) - ((x1 - x2)^2 + (y1 - y2)^2)) / (2 * sqrt((x0 - x1)^2 + (y0 - y1)^2) * sqrt((x0 - x2)^2 + (y0 - y2)^2)))*180/pi;
+angle3 = acos((((x0 - x1)^2 + (y0 - y1)^2) + ((x0 - x3)^2 + (y0 - y3)^2) - ((x1 - x3)^2 + (y1 - y3)^2)) / (2 * sqrt((x0 - x1)^2 + (y0 - y1)^2) * sqrt((x0 - x3)^2 + (y0 - y3)^2)))*180/pi;
 
-%Obtain the angle by :
-angle1 = acos(dot([a(1,1) c(1,1)],[a(1,1) b(1,1)])/(ac*ab1))*180/pi;
-angle2 = acos(dot([a(1,1) c(1,1)],[a(1,1) b(2,1)])/(ac*ab2))*180/pi;
+imshow(branchSub)
+hold on
+plot(x0, y0, 'ro')
+plot(x1, y1, 'bo')
+plot(x2, y2, 'yo')
+plot(x3, y3, 'go')
 
-%% OTher Try Angle
-x0 = mainlinept(1,1);
-y0 = mainlinept(1,2);
-x1 = position(:,1);
-x2 = position(:,2);
-[x2, y2] = [branchpt1(1,1), branchpt1(1,2)];
-[x3, y3] = [branchpt2(1,1), branchpt2(1,2)];
+%% Get rid of branch with smaller angle
+imshow(branchSub)
+hold on
+plot(branchpt1(1,2), branchpt1(1,1), 'go')
+plot(branchpt2(1,2), branchpt2(1,1), 'bo')
+if (180-angle2)>(180-angle3)
+    %then want to get rid of branch associated with angle2
+    branchSub(branchpt1(1,1), branchpt1(1,2)) = 0;
+    [a,b] = find(branchSub.' == 1);
+    nonzero = [a,b];
+    [m,n] = size(nonzero);
+    distances2 = [];
+    for i = 1:m
+        distances2 = [distances2, sqrt((nonzero(i,1) - branchpt1(1,2))^2 + (nonzero(i,2) - branchpt1(1,1))^2)];
+    end
+    [val,idx] = min(distances2);
+    BinIM_nobranch = BinIM;
+    BinIM_nobranch(branchpt1(1,1), branchpt1(1,2)) = 0;
+    BinIM_nobranch(nonzero(idx(1),2), nonzero(idx(1),1)) = 0;
+    
+    BinIM_nobranch = bwareafilt(BinIM_nobranch, 1);
+    BinIM_nobranch = bwmorph(BinIM_nobranch, 'spur', 2);
+else
+    %then want to get rid of branch associated with angle3
+    branchSub(branchpt2(1,1), branchpt2(1,2)) = 0;
+    [a,b] = find(branchSub.' == 1);
+    nonzero = [a,b];
+    [m,n] = size(nonzero);
+    distances2 = [];
+    for i = 1:m
+        distances2 = [distances2, sqrt((nonzero(i,1) - branchpt2(1,2))^2 + (nonzero(i,2) - branchpt2(1,1))^2)];
+    end
+    [val,idx] = min(distances2);
+    BinIM_nobranch = BinIM;
+    BinIM_nobranch(branchpt2(1,1), branchpt2(1,2)) = 0;
+    BinIM_nobranch(nonzero(idx(1),2), nonzero(idx(1),1)) = 0;
+    
+    BinIM_nobranch = bwareafilt(BinIM_nobranch, 1);
+    BinIM_nobranch = bwmorph(BinIM_nobranch, 'spur', 2);
+end
 
-x10 = x1-x0;
-y10 = y1-y0;
-x20 = x2-x0;
-y20 = y2-y0; 
-x30 = x3-x0;
-y30 = y3-y0; 
+%Image with no branch = BinIM_nobranch
 
-ang2 = atan2(abs(x10*y20-x20*y10),x10*y10+x20*y20);
-ang3 = atan2(abs(x10*y30-x30*y10),x10*y10+x30*y20);
 %% SPLINE
 I = imread("Try/croppedImageMaxed1-515.png");
 F=sparse(I);
