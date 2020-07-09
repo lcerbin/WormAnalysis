@@ -115,35 +115,24 @@ plot(nonzero(idx(1),1), nonzero(idx(1),2), 'bo');
 disp(nonzero(idx(1),1));
 disp(nonzero(idx(1),2));
 %% Define the Points
-imshow(mainline)
-hold on
-plot(nonzero(idx(1),1), nonzero(idx(1),2), "ro")
-plot(mainline(nonzero(idx(1),1), nonzero(idx(1),2)), "bo")
-plot(mainline(nonzero(idx(1),1), nonzero(idx(1),2)), "bo")
-disp(nonzero(idx(1),2))
-if mainline(nonzero(idx(1),2), nonzero(idx(1),1)) == 1
+if mainline(nonzero(idx(1),1), nonzero(idx(1),2)) == 1
     %then point one on mainline
-    mainlinept = [nonzero(idx(1),2), nonzero(idx(1),1)];
-    branchpt1 = [nonzero(idx(2),2), nonzero(idx(2),1)];
-    branchpt2 = [nonzero(idx(3),2), nonzero(idx(3),1)];
+    mainlinept = [nonzero(idx(1),1), nonzero(idx(1),2)];
+    branchpt1 = [nonzero(idx(2),1), nonzero(idx(2),2)];
+    branchpt2 = [nonzero(idx(3),1), nonzero(idx(3),2)];
    
 elseif mainline(nonzero(idx(2),1), nonzero(idx(2),2)) ==1
     %then second point on mainline
-    mainlinept = [nonzero(idx(2),2), nonzero(idx(2),1)];
-    branchpt1 = [nonzero(idx(1),2), nonzero(idx(1),1)];
-    branchpt2 = [nonzero(idx(3),2), nonzero(idx(3),1)];
+    mainlinept = [nonzero(idx(2),1), nonzero(idx(2),2)];
+    branchpt1 = [nonzero(idx(1),1), nonzero(idx(1),2)];
+    branchpt2 = [nonzero(idx(3),1), nonzero(idx(3),2)];
 else
     %then third point on mainline
-    mainlinept = [nonzero(idx(3),2), nonzero(idx(3),1)];
-    branchpt1 = [nonzero(idx(2),2), nonzero(idx(2),1)];
-    branchpt2 = [nonzero(idx(1),2), nonzero(idx(1),1)];
+    mainlinept = [nonzero(idx(3),1), nonzero(idx(3),2)];
+    branchpt1 = [nonzero(idx(2),1), nonzero(idx(2),2)];
+    branchpt2 = [nonzero(idx(1),1), nonzero(idx(1),2)];
 end
-
-imshow(branchSub)
-hold on
-plot(mainlinept(1,2), mainlinept(1,1), 'yo')
-plot(branchpt1(1,2), branchpt1(1,1), 'go')
-plot(branchpt2(1,2), branchpt2(1,1), 'bo')
+    
 %% Find angle between main branch point, branchpoint, and either branch
 a = mainlinept;
 b = [branchpt1; branchpt2];
@@ -159,21 +148,12 @@ angle1 = acos(dot([a(1,1) c(1,1)],[a(1,1) b(1,1)])/(ac*ab1))*180/pi;
 angle2 = acos(dot([a(1,1) c(1,1)],[a(1,1) b(2,1)])/(ac*ab2))*180/pi;
 
 %% OTher Try Angle
-x0 = mainlinept(1,2);
-y0 = mainlinept(1,1);
-x1 = position(1,1);
-y1 = position(1,2);
-x2 = branchpt1(1,2);
-y2 = branchpt1(1,1);
-x3 = branchpt2(1,2);
-y3 = branchpt2(1,1);
-
-imshow(branchSub)
-hold on
-plot(x0, y0, 'bo')
-plot(x1, y1, 'ro')
-plot(x2, y2, 'yo')
-plot(x3, y3, 'go')
+x0 = mainlinept(1,1);
+y0 = mainlinept(1,2);
+x1 = position(:,1);
+x2 = position(:,2);
+[x2, y2] = [branchpt1(1,1), branchpt1(1,2)];
+[x3, y3] = [branchpt2(1,1), branchpt2(1,2)];
 
 x10 = x1-x0;
 y10 = y1-y0;
@@ -182,8 +162,8 @@ y20 = y2-y0;
 x30 = x3-x0;
 y30 = y3-y0; 
 
-ang2 = atan2(abs(x10*y20-x20*y10),x10*y10+x20*y20)*180/pi;
-ang3 = atan2(abs(x10*y30-x30*y10),x10*y10+x30*y20)*180/pi;
+ang2 = atan2(abs(x10*y20-x20*y10),x10*y10+x20*y20);
+ang3 = atan2(abs(x10*y30-x30*y10),x10*y10+x30*y20);
 %% SPLINE
 I = imread("Try/croppedImageMaxed1-515.png");
 F=sparse(I);
