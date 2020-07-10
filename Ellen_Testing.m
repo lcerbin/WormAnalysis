@@ -9,6 +9,7 @@ for i = 1:48
 end
 cd ..;
 datafile = uigetdir(pwd,"Select Folder with Data Folder:");
+
 %% 
 %step 550 across the width from 500 (to 4350)
 %step 550 across height from 200 (to 2950)
@@ -35,7 +36,7 @@ for m = 1:600
 end
 %%
 MAX = uint8(zeros(551,551,2));
-for e = 21%:48
+for e =8%:48
     MAX(:,:,1)=imread(strcat("data/well",num2str(e),"/croppedImage",num2str(e),"-1.png"));    
     for n=2:600 % use maxprojection to create background image
         I=imread(strcat('data/well',num2str(e),'/croppedImage',num2str(e),'-',num2str(n),".png"));
@@ -47,29 +48,80 @@ for e = 21%:48
     for v = 1:600
         filename = strcat('data/well',num2str(e),'/croppedImage',num2str(e),'-',num2str(v),".png")
         IM = uint8(255 * mat2gray(imcomplement((Neg-(imread(filename))))));
+        %BinIM = MaskLuca(IM);
         BinIM = IM <160;
         BinIM = bwmorph(BinIM,'hbreak', Inf);
         eroimg = imerode(BinIM, strel('disk', 1));
         eroimg = bwareaopen(eroimg, 10, 4);
         BinIM = imdilate(eroimg, strel('disk', 1));
         BinIM = bwareafilt(BinIM,1);
-        BinIM = bwskel(BinIM);
+        %BinIM = bwskel(BinIM);
         imwrite(BinIM, strcat('Try/croppedImageMaxed',num2str(e),'-',num2str(v),".png"));
     end
 end
+
+%% TESTING COM and Speed
+IM = imread(strcat('Try/croppedImageMaxed',num2str(21),'-',num2str(1),".png"));
+s = regionprops(IM,'centroid');
+centroids = cat(1,s.Centroid);
+
+s = regionprops (IM, 'Orientation', 'MajorAxisLength','MinorAxisLength', 'Eccentricity', 'Centroid');
+hold on
+    phi = linspace(0,2*pi,50);
+    cosphi = cos(phi);
+    sinphi = sin(phi);
+    for k = 1:length(s)
+        xbar = s(k).Centroid(1);
+        ybar = s(k).Centroid(2);
+        a = s(k).MajorAxisLength/2;
+        b = s(k).MinorAxisLength/2;
+        theta = pi*s(k).Orientation/180;
+        R = [ cos(theta)   sin(theta)
+            -sin(theta)   cos(theta)];
+        xy = [a*cosphi; b*sinphi];
+        xy = R*xy;
+        x = xy(1,:) + xbar;
+        y = xy(2,:) + ybar;
+        plot(x,y,'r','LineWidth',2);
+    end
+
+%Display the binary image with the centroid locations superimposed.
+imshow(IM)
+hold on
+plot(centroids(:,1),centroids(:,2),'b*')
+hold off
+
 %% TESTING Cleanup
 %files for well 1 :   files = dir(strcat('croppedImage',1,'-*.*'));
-IM = uint8(255 * mat2gray(imcomplement((Neg-(imread("data/well20/croppedImage20-526.png"))))));
-BinIM = IM <160;
+IM = uint8(255 * mat2gray(imcomplement((Neg-(imread("data/well8/croppedImage8-337.png"))))));
+BinIM = IM <140;
 %BinIM = bwmorph(BinIM, 'open');
-eroimg = imerode(BinIM, strel('disk', 1));
-eroimg = bwareaopen(eroimg, 10, 4);
-BinIM = imdilate(eroimg, strel('disk', 1));
-BinIM = bwmorph(BinIM,'hbreak', Inf);
+%eroimg = imerode(BinIM, strel('disk', 1));
+%eroimg = bwareaopen(eroimg, 10, 4);
+%BinIM = imdilate(eroimg, strel('disk', 1));
+%BinIM = bwmorph(BinIM,'hbreak', Inf);
 BinIM = bwareafilt(BinIM,1);
-BinIM = bwskel(BinIM);
-imshow(BinIM)
+BinIMf = bwskel(BinIM);
 
+
+endpt = bwmorph(BinIMf, 'endpoints');
+[ys, xs] = find(endpt);
+
+f1 = figure;
+f2 = figure;
+
+figure(f1);
+imshow(BinIM)
+hold on
+[y, x] = find(BinIMf);
+scatter(x,y, 'r.')
+scatter(xs,ys, 'yo')
+hold off
+
+figure(f2);
+imshow(IM);
+hold on
+scatter(x,y, 'r.');
 %% START OF BRANCH REMOVAL
 
 %% Find branchpoints (hopefully only ever 1 or none) and remove
