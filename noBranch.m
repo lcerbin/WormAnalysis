@@ -5,6 +5,11 @@ branchPoints = bwmorph(BinIM, 'branchpoints');
 if branchPoints == logical(zeros(551,551))
     BinIM_nobranch = bwskel(BinIM);
 else
+    [check, ~] = size(find(branchPoints.' == 1));
+    if check>1
+        BinIM_nobranch = logical(zeros(551,551));
+        return
+    else
     branchSub = BinIM - bwmorph(branchPoints, 'thicken');
     [r, c] = find(branchPoints.' == 1);
     position = [r, c];
@@ -97,6 +102,7 @@ else
 
         BinIM_nobranch = bwareafilt(BinIM_nobranch, 1);
         BinIM_nobranch = bwmorph(BinIM_nobranch, 'spur', 2);
+    end
     end
 end
 end

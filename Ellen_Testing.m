@@ -39,12 +39,19 @@ end
 
 
 %% Collecta all COM, Speed, Axes, etc.
-%dataOut = ["Time (s)", "COM x-coordinate (px)", "COM y-coordinate (px)", "Speed (mm/s)", "Major Axis (px)", "Minor Axis (px)", "Area (px)", "Perimeter (px)", "Min Feret Diameter (px)", "Max Feret Diameter px)", "Spline Length (px)", "Distance between Endpoints (px)"];
-
+dataOut = ["Time (s)", "COM x-coordinate (px)", "COM y-coordinate (px)", "Speed (mm/s)", "Major Axis (px)", "Minor Axis (px)", "Area (px)", "Perimeter (px)", "Min Feret Diameter (px)", "Max Feret Diameter px)", "Spline Length (px)", "Distance between Endpoints (px)"];
+well = 18;
+Neg = maxproj(well);
+%%
 for i = 1:600
     dataOut(i+1,1) = [i*0.2]; %frame number
-    IM = imread(strcat('Try/croppedImageMaxed',num2str(20),'-',num2str(i),".png"));
-    s = regionprops (IM, 'MajorAxisLength','MinorAxisLength', 'Centroid', 'Area', 'Perimeter', 'MinFeretProperties', 'MaxFeretProperties');
+    im = imread(strcat("data/well", num2str(well),"/croppedImage", num2str(well), "-", num2str(i), ".png"));
+    IM = uint8(255 * mat2gray(imcomplement(Neg-im)));
+    BinIM = IM <140;
+    BinIM = bwareafilt(BinIM,1);
+    BinIM = imfill(BinIM, 'holes');
+    
+    s = regionprops (BinIM, 'MajorAxisLength','MinorAxisLength', 'Centroid', 'Area', 'Perimeter', 'MinFeretProperties', 'MaxFeretProperties');
     
     disp(i);
     major = s.MajorAxisLength;
@@ -54,7 +61,14 @@ for i = 1:600
     perimeter  =s.Perimeter;
     minferet = s.MinFeretDiameter;
     maxferet = s.MaxFeretDiameter;
-
+    if i == 1
+        speed = NaN;
+    else
+        speed = sqrt((centroid(1,1) - cenprevx)^2 + (centroid(1,2) - cenprevy)^2)/0.2/73;
+    end
+    cenprevx = centroid(1,1);
+    cenprevy = centroid(1,2);
+    
     dataOut(i+1,2) = [centroid(1,1)];
     dataOut(i+1,3) = [centroid(1,2)];
     dataOut(i+1,4) = [speed];
@@ -75,8 +89,9 @@ for i = 1:600
     disp(i)
 end
 %% Collect all spline parameters
-well = 20;
+well = 18;
 Neg = maxproj(well);
+%%
 for i = 1:600
     im = imread(strcat("data/well", num2str(well),"/croppedImage", num2str(well), "-", num2str(i), ".png"));
     IM = uint8(255 * mat2gray(imcomplement(Neg-im)));
@@ -93,33 +108,45 @@ for i = 1:600
     
     %get rid of branch if there is one
     BinIM_nobranch = noBranch(BinIM);
-    [spline, endpoints] = extend(BinIM, BinIM_nobranch); %extend nonbranched spline
-    
-    %convert to binary image and back to points
-    binaryImage = false(551, 551);
-    for k = 1 : length(spline(:,1))
-        row = round(spline(k,2));
-        col = round(spline(k,1));
-        binaryImage(row, col) = true;
-    end
-    [a,b] = find(binaryImage.' == 1); %get array of points on extended spline
-    extendedSpline = [a,b];
+    if BinIM_nobranch == logical(zeros(551,551))
+        %Then more than 1 branchpoint
+        dataOut(i+1,11) = [NaN];
+        dataOut(i+1,12) = [NaN];
+        disp(strcat("no data for", num2str(i)));
+    else
+        [spline, endpoints] = extend(BinIM, BinIM_nobranch); %extend nonbranched spline
 
-    [calcLength, ~] = size(extendedSpline);
-    dataOut(i+1,11) = [calcLength];
-    
-    calcDistend = sqrt((endpoints(1,1)-endpoints(1,2))^2 + (endpoints(2,1)-endpoints(2,2))^2);
-    dataOut(i+1,12) = [calcDistend];
-    
-    wantDisp = 1; %make 0 if not want to show every image
-    if wantDisp == 1
+        %convert to binary image and back to points
+        binaryImage = false(551, 551);
+        for k = 1 : length(spline(:,1))
+            row = round(spline(k,2));
+            col = round(spline(k,1));
+            binaryImage(row, col) = true;
+        end
+        [a,b] = find(binaryImage.' == 1); %get array of points on extended spline
+        extendedSpline = [a,b];
+
+        [calcLength, ~] = size(extendedSpline); %add spline length to dataOut
+        dataOut(i+1,11) = [calcLength];
+        
+        [rows, ~] = size(endpoints);
+        if rows==1 %if only one endpoint
+            calcDistend = 0;
+        else
+            calcDistend = sqrt((endpoints(1,1)-endpoints(2,1))^2 + (endpoints(1,2)-endpoints(2,2))^2);
+        end
+        dataOut(i+1,12) = [calcDistend]; %add distance between endpoints to dataOut
+
         disp(i)
-        imshow(BinIM)
-        hold on
-        scatter(extendedSpline(:,1), extendedSpline(:,2), 'r.');
-        lightBlue = [91, 207, 244] / 255; 
-        scatter(endpoints(:,1), endpoints(:,2), 'o', 'b', 'MarkerFaceColor', lightBlue);
-        pause(0.5);
+        wantDisp = 1; %make 0 if not want to show every image
+        if wantDisp == 1
+            imshow(BinIM)
+            hold on
+            scatter(extendedSpline(:,1), extendedSpline(:,2), 'r.');
+            lightBlue = [91, 207, 244] / 255; 
+            scatter(endpoints(:,1), endpoints(:,2), 'o', 'b', 'MarkerFaceColor', lightBlue);
+            pause(0.5);
+        end
     end
 end
 
@@ -127,12 +154,13 @@ end
 
 
 %% Use to show one well at one timepoint
-    well = 20;
-    frame = 109;
+    well = 18;    
+    %Neg = maxproj(well);
+    frame = 1;
     im = imread(strcat("data/well", num2str(well),"/croppedImage", num2str(well), "-", num2str(frame), ".png"));
-    Neg = maxproj(well);
     IM = uint8(255 * mat2gray(imcomplement(Neg-im)));
     BinIM = IM <140;
+
     %BinIM = bwmorph(BinIM, 'open');
     %eroimg = imerode(BinIM, strel('disk', 1));
     %eroimg = bwareaopen(eroimg, 10, 4);
@@ -141,10 +169,15 @@ end
     BinIM = bwareafilt(BinIM,1);
     BinIM = imfill(BinIM, 'holes');
     BinIMf = bwskel(BinIM);
-   
+    %figure, imshow(BinIMf);
     BinIM_nobranch = noBranch(BinIM);
-    [spline, endpoints] = extend(BinIM, BinIM_nobranch);
     
+    if BinIM_nobranch == logical(zeros(551,551))
+        %Then more than 1 branchpoint
+        disp("ha")
+    else
+        [spline, endpoints] = extend(BinIM, BinIM_nobranch);
+    end
     f1 = figure;
     f2 = figure;
     figure(f1);

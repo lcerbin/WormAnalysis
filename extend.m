@@ -53,17 +53,20 @@ for i2 = 1:2
         [~,idx] = min(distances);
         secondPoint = [nonzero(idx(1),2), nonzero(idx(1),1)];
         slope = (secondPoint(1,2)-endpoint(1,1))/(secondPoint(1,1)-endpoint(1,2));
-        step = 1;
+        step = 0.9;
         if slope == double(Inf)
             slope = 100;
-            step = 0.02;
+            step = 0.01;
         elseif slope == double(-Inf)
             slope = -100;
-            step = 0.02;
+            step = 0.01;
         elseif abs(slope)>1
-            step = 0.5;
+            step = 0.49;
+        elseif slope == 0
+            step = 1;
+        elseif (abs(slope))<=0.5
+            step = 1.9;    
         end
-    
         intc = endpoint(1,1)-slope*endpoint(1,2);
 
         %try point on line
@@ -90,7 +93,7 @@ for i2 = 1:2
                 %is close to boundary?
                 for i = 1:boundm
                     calcDist = sqrt((boundaryx(i,1) - newPt(1,1))^2 + (boundaryy(i,1) - newPt(1,2))^2);
-                    if calcDist<1.1
+                    if calcDist<1
                         endpoints(i2, 1) = newPt(1,1);
                         endpoints(i2, 2) = newPt(1,2);
                         is = 0;
@@ -99,7 +102,6 @@ for i2 = 1:2
             end
         else
             %keep plotting in that direction
-            disp("right direction")
             nonzero = [nonzero; newPt1(1,2),newPt1(1,1)];
             is = 1;
             while is == 1
@@ -109,7 +111,7 @@ for i2 = 1:2
                 %is close to boundary?
                 for i = 1:boundm
                     calcDist = sqrt((boundaryx(i,1) - newPt(1,1))^2 + (boundaryy(i,1) - newPt(1,2))^2);
-                    if calcDist<1.1
+                    if calcDist<1
                         endpoints(i2, 1) = newPt(1,1);
                         endpoints(i2, 2) = newPt(1,2);
                         is=0;
