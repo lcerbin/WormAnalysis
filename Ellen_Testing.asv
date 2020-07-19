@@ -127,9 +127,8 @@ for i = 1:600
     reorderedSpline = [];
     
     
-    
     halfway = floor(calcLength(1,1)/2); %find midpoint spline
-    midpt = [reorderedSpline(halfway, 1) , reorderedSpline(halfway, 2)];
+    midpt = [reorderedSpline(halfway, 1) , extendedSpline(halfway, 2)];
     calcMid = sqrt((str2num(dataOut(i+1, 2)) - midpt(1,1))^2 + (str2num(dataOut(i+1, 3)) - midpt(1,2))^2);
     dataOut(i+1,13) = [calcMid];
    
