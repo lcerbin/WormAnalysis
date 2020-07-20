@@ -125,8 +125,9 @@ for i = 1:600
     
     %reorder spline using nearest neighbour
     reorderedSpline = [];
-    
-    
+    [sortedX, sortedY] = sortPoints(extendedSpline, [endpoints(1,1), endpoints(1,2)], [endpoints(2,1), endpoints(2,2)]);
+    reorderedSpline(:,1) = sortedX;
+    reorderedSpline(:,2) = sortedY;
     
     halfway = floor(calcLength(1,1)/2); %find midpoint spline
     midpt = [reorderedSpline(halfway, 1) , reorderedSpline(halfway, 2)];
@@ -173,9 +174,14 @@ end
     %figure, imshow(BinIMf);
     BinIM_nobranch = noBranch(BinIM);
     [spline, endpoints] = extend(BinIM, BinIM_nobranch);
-    [calcLength, ~] = size(spline); %add spline length to dataOut
+    
+    reorderedSpline = [];
+    [sortedX, sortedY] = sortPoints(spline, [endpoints(1,1), endpoints(1,2)], [endpoints(2,1), endpoints(2,2)]);
+    reorderedSpline(:,1) = sortedX;
+    reorderedSpline(:,2) = sortedY;
+    [calcLength, ~] = size(reorderedSpline); %add spline length to dataOut
     halfway = floor(calcLength(1,1)/2);
-    midpt = [spline(halfway, 1) , spline(halfway, 2)];
+    midpt = [reorderedSpline(halfway, 1) , reorderedSpline(halfway, 2)];
     
     f1 = figure;
     f2 = figure;
@@ -184,7 +190,8 @@ end
     hold on
     %scatter(nonzero(:,1), nonzero(:,2), 'r.');
     scatter(spline(:,1), spline(:,2), 'r.');
-    %plot(midpt(1,1), midpt(1,2), "bo")
+    scatter(reorderedSpline(:,1), reorderedSpline(:,2), 'g.');
+    plot(midpt(1,1), midpt(1,2), "go")
     lightBlue = [91, 207, 244] / 255; 
     scatter(endpoints(:,1), endpoints(:,2), 'o', 'b', 'MarkerFaceColor', lightBlue);
     hold off
