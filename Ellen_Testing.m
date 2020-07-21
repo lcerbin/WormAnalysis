@@ -39,18 +39,17 @@ end
 
 
 %% Collecta all COM, Speed, Axes, etc.
-dataOut = ["Time (s)", "COM x-coordinate (px)", "COM y-coordinate (px)", "Speed (mm/s)", "Major Axis (px)", "Minor Axis (px)", "Area (px)", "Perimeter (px)", "Min Feret Diameter (px)", "Max Feret Diameter px)", "Spline Length (px)", "Distance between Endpoints (px)", "Dist Midpoint Spline to COM"];
-well = 24;
+dataOut = ["Time (s)", "COM x-coordinate (px)", "COM y-coordinate (px)", "Speed (mm/s)", "Major Axis (px)", "Minor Axis (px)", "Area (px)", "Perimeter (px)", "Min Feret Diameter (px)", "Max Feret Diameter px)", "Spline Length (px)", "Distance between Endpoints (px)", "Dist Midpoint Spline to COM (px)"];
+well = 25;
 Neg = maxproj(well);
 %%
 for i = 1:600
     dataOut(i+1,1) = [i*0.2]; %frame number
     im = imread(strcat("data/well", num2str(well),"/croppedImage", num2str(well), "-", num2str(i), ".png"));
     IM = uint8(255 * mat2gray(imcomplement(Neg-im)));
-    BinIM = IM <140;
+    BinIM = IM <150;
     BinIM = bwareafilt(BinIM,1);
     BinIM = imfill(BinIM, 'holes');
-    
     s = regionprops (BinIM, 'MajorAxisLength','MinorAxisLength', 'Centroid', 'Area', 'Perimeter', 'MinFeretProperties', 'MaxFeretProperties');
     
     disp(i);
@@ -58,20 +57,12 @@ for i = 1:600
     minor = s.MinorAxisLength;
     centroid = s.Centroid;
     area = s.Area;
-    perimeter  =s.Perimeter;
+    perimeter  = s.Perimeter;
     minferet = s.MinFeretDiameter;
     maxferet = s.MaxFeretDiameter;
-    if i == 1
-        speed = NaN;
-    else
-        speed = sqrt((centroid(1,1) - cenprevx)^2 + (centroid(1,2) - cenprevy)^2)/0.2/73;
-    end
-    cenprevx = centroid(1,1);
-    cenprevy = centroid(1,2);
     
     dataOut(i+1,2) = [centroid(1,1)];
     dataOut(i+1,3) = [centroid(1,2)];
-    dataOut(i+1,4) = [speed];
     dataOut(i+1,5) = [major];
     dataOut(i+1,6) = [minor];
     dataOut(i+1,7) = [area];
@@ -80,16 +71,17 @@ for i = 1:600
     dataOut(i+1,10) = [maxferet];
 end
 
+%speed every 10 frames
+num = 10;
 for i = 1:600
-    if i==600
-        dataOut(i+1,4) = NaN;
-    else
-        dataOut(i+1,4) = sqrt((str2num(dataOut(i+1,2)) - str2num(dataOut(i+2, 2)))^2 + (str2num(dataOut(i+1,3)) - str2num(dataOut(i+2, 3)))^2)/73/0.2;
-    end
-    disp(i)
+    if (mod(i,10) == 1) && i>1
+        num = num + 10;
+    end    
+    speed = sqrt((str2num(dataOut(num+1, 2)) - str2num(dataOut(num-8, 2)))^2 + (str2num(dataOut(num+1, 3)) - str2num(dataOut(num-8, 3)))^2)/2/73;
+    dataOut(i+1,4) = [speed];
 end
 %% Collect all spline parameters
-well = 24;
+well = 23;
 Neg = maxproj(well);
 %%
 for i = 1:600
@@ -119,27 +111,35 @@ for i = 1:600
     end
     [a,b] = find(binaryImage.' == 1); %get array of points on extended spline
     extendedSpline = [a,b];
-
-    [calcLength, ~] = size(extendedSpline); %add spline length to dataOut
-    dataOut(i+1,11) = [calcLength];
-    
-    %reorder spline using nearest neighbour
-    reorderedSpline = [];
-    [sortedX, sortedY] = sortPoints(extendedSpline, [endpoints(1,1), endpoints(1,2)], [endpoints(2,1), endpoints(2,2)]);
-    reorderedSpline(:,1) = sortedX;
-    reorderedSpline(:,2) = sortedY;
-    
-    halfway = floor(calcLength(1,1)/2); %find midpoint spline
-    midpt = [reorderedSpline(halfway, 1) , reorderedSpline(halfway, 2)];
-    calcMid = sqrt((str2num(dataOut(i+1, 2)) - midpt(1,1))^2 + (str2num(dataOut(i+1, 3)) - midpt(1,2))^2);
-    dataOut(i+1,13) = [calcMid];
    
     [rows, ~] = size(endpoints);
     if rows==1 %if only one endpoint
         calcDistend = 0;
+        %reorder spline using nearest neighbour
+        reorderedSpline = [];
+        [sortedX, sortedY] = sortPoints(spline, [endpoints(1,1), endpoints(1,2)]);
+        reorderedSpline(:,1) = sortedX;
+        reorderedSpline(:,2) = sortedY;
+    
+    
     else
+        %reorder spline using nearest neighbour
+        reorderedSpline = [];
+        [sortedX, sortedY] = sortPoints(spline, [endpoints(1,1), endpoints(1,2)], [endpoints(2,1), endpoints(2,2)]);
+        reorderedSpline(:,1) = sortedX;
+        reorderedSpline(:,2) = sortedY;
+        
         calcDistend = sqrt((endpoints(1,1)-endpoints(2,1))^2 + (endpoints(1,2)-endpoints(2,2))^2);
     end
+    [calcLength, ~] = size(reorderedSpline); %add spline length to dataOut
+    dataOut(i+1,11) = [calcLength];
+    
+    halfway = ceil(calcLength(1,1)/2);
+    midpt = [reorderedSpline(halfway, 1) , reorderedSpline(halfway, 2)];
+
+    calcMid = sqrt((str2num(dataOut(i+1, 2)) - midpt(1,1))^2 + (str2num(dataOut(i+1, 3)) - midpt(1,2))^2);
+    dataOut(i+1,13) = [calcMid];
+    
     dataOut(i+1,12) = [calcDistend]; %add distance between endpoints to dataOut
 
     disp(i)
@@ -156,9 +156,9 @@ end
 
 
 %% Use to show one well at one timepoint
-    well = 24;    
-    %Neg = maxproj(well);
-    frame = 496;
+    well = 21;    
+    Neg = maxproj(well);
+    frame = 278;
     im = imread(strcat("data/well", num2str(well),"/croppedImage", num2str(well), "-", num2str(frame), ".png"));
     IM = uint8(255 * mat2gray(imcomplement(Neg-im)));
     BinIM = IM <150;
@@ -169,19 +169,39 @@ end
     %BinIM = imdilate(eroimg, strel('disk', 1));
     %BinIM = bwmorph(BinIM,'hbreak', Inf);
     BinIM = bwareafilt(BinIM,1);
+    %BinIM = ~bwareaopen(~BinIM, 20);
     BinIM = imfill(BinIM, 'holes');
+    s = regionprops (BinIM, 'Centroid');
+    centroid = s.Centroid;
+    
     BinIMf = bwskel(BinIM);
     %figure, imshow(BinIMf);
     BinIM_nobranch = noBranch(BinIM);
     [spline, endpoints] = extend(BinIM, BinIM_nobranch);
     
-    reorderedSpline = [];
-    [sortedX, sortedY] = sortPoints(spline, [endpoints(1,1), endpoints(1,2)], [endpoints(2,1), endpoints(2,2)]);
-    reorderedSpline(:,1) = sortedX;
-    reorderedSpline(:,2) = sortedY;
+    [rows, ~] = size(endpoints);
+    if rows==1 %if only one endpoint
+        calcDistend = 0;
+        %reorder spline using nearest neighbour
+        reorderedSpline = [];
+        [sortedX, sortedY] = sortPoints(spline, [endpoints(1,1), endpoints(1,2)]);
+        reorderedSpline(:,1) = sortedX;
+        reorderedSpline(:,2) = sortedY;
+    
+    
+    else
+        %reorder spline using nearest neighbour
+        reorderedSpline = [];
+        [sortedX, sortedY] = sortPoints(spline, [endpoints(1,1), endpoints(1,2)], [endpoints(2,1), endpoints(2,2)]);
+        reorderedSpline(:,1) = sortedX;
+        reorderedSpline(:,2) = sortedY;
+        
+        calcDistend = sqrt((endpoints(1,1)-endpoints(2,1))^2 + (endpoints(1,2)-endpoints(2,2))^2);
+    end
     [calcLength, ~] = size(reorderedSpline); %add spline length to dataOut
-    halfway = floor(calcLength(1,1)/2);
+    halfway = ceil(calcLength(1,1)/2);
     midpt = [reorderedSpline(halfway, 1) , reorderedSpline(halfway, 2)];
+    %calcMid = sqrt((str2num(centroid(1,1)) - midpt(1,1))^2 + (str2num(centroid(1,2)) - midpt(1,2))^2)
     
     f1 = figure;
     f2 = figure;
@@ -191,6 +211,7 @@ end
     %scatter(nonzero(:,1), nonzero(:,2), 'r.');
     scatter(spline(:,1), spline(:,2), 'r.');
     scatter(reorderedSpline(:,1), reorderedSpline(:,2), 'g.');
+    scatter(centroid(1,1), centroid(1,2), 'yo')
     plot(midpt(1,1), midpt(1,2), "go")
     lightBlue = [91, 207, 244] / 255; 
     scatter(endpoints(:,1), endpoints(:,2), 'o', 'b', 'MarkerFaceColor', lightBlue);
@@ -203,3 +224,54 @@ end
     scatter(spline(:,1), spline(:,2), 'r.');
 
 %% ALL FUNCTIONS:
+well = 21;    
+    %Neg = maxproj(well);
+    frame = 18;
+    im = imread(strcat("data/well", num2str(well),"/croppedImage", num2str(well), "-", num2str(frame), ".png"));
+    imshow(im)
+    
+    %%
+for i = 1:600
+    if i == 323
+        pause(3)
+    end
+%start with spline length
+    if str2num(dataOut(i+1,11)) < 95
+        %small spline length = ball
+        dataOut(i+1,14) = "Ball";
+    else
+        d_l = str2num(dataOut(i+1,12))/str2num(dataOut(i+1,11));
+        %test speed
+        if str2num(dataOut(i+1,4))> 0.4
+            %then normal worm, test d/l
+            if d_l > 0.85
+                %then edge of well
+                dataOut(i+1,14) = "Edge Well";
+            else
+                dataOut(i+1,14) = "Other Normal";
+            end
+        else
+            aspectRat = str2num(dataOut(i+1,5))/str2num(dataOut(i+1,6));
+            %not fast = not normal
+            if aspectRat > 4.5
+                %then is straight
+                dataOut(i+1,14) = "Straight";
+            else
+                %then curved in some way
+                if d_l < 0.33
+                    dataOut(i+1,14) = "Curled";
+                else
+                    if d_l < 0.63
+                        dataOut(i+1,14) = "C-Shape";
+                    else
+                        if d_l < 0.99
+                            dataOut(i+1,14) = "Rainbow";
+                        else
+                            dataOut(i+1,14) = "-";
+                        end
+                    end
+                end                
+            end
+        end
+    end
+end
